@@ -27,4 +27,4 @@ jobs:
       - name: execute py script # run main.py
         env:
           SERVICE_ACCOUNT_FILE: ${{ secrets.SERVICE_ACCOUNT_FILE }}
-        run: python mimsScraping_v2.py
+        run: python investing.py

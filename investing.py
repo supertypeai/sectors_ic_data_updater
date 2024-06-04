@@ -10,13 +10,6 @@ import logging
 import numpy as np
 from bs4 import BeautifulSoup
 
-url_supabase = os.environ.get("SUPABASE_URL")
-key = os.environ.get("SUPABASE_KEY")
-supabase = create_client(url_supabase, key)
-
-data_code = supabase.table("idx_company_profile").select("*").execute()
-data = pd.DataFrame(data_code.data)
-
 data_link = pd.read_csv("investing_link.csv")
 
 expected_value = [

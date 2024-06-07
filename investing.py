@@ -87,19 +87,19 @@ def main(data_link, args):
         fold = row["fold"]
         id = row["id"]
         # Income Statement
-        is_url = f"https://www.investing.com{link}-income-statement"
+        is_url = f"https://www.investing.com{link}-income-statement" if args.quarter else f"https://www.investing.com/instruments/Financials/changereporttypeajax?action=change_report_type&pair_ID={id}&report_type=INC&period_type=Annual"
         html_content = requests.get(is_url).text
         soup = BeautifulSoup(html_content, "html.parser")
         data_dict = get_dates_quarter(soup, symbol) if args.quarter else get_dates_annual(soup, symbol)
         get_values(soup, data_dict, currency, fold)
         # Balance Sheet
-        bs_url = f"https://www.investing.com{link}-balance-sheet"
+        bs_url = f"https://www.investing.com{link}-balance-sheet" if args.quarter else f"https://www.investing.com/instruments/Financials/changereporttypeajax?action=change_report_type&pair_ID={id}&report_type=BAL&period_type=Annual"
         html_content = requests.get(bs_url).text
         soup = BeautifulSoup(html_content, "html.parser")
         get_values(soup, data_dict, currency, fold)
         # Cash Flow
-        bs_url = f"https://www.investing.com{link}-cash-flow"
-        html_content = requests.get(bs_url).text
+        cf_url = f"https://www.investing.com{link}-cash-flow" if args.quarter else f"https://www.investing.com/instruments/Financials/changereporttypeajax?action=change_report_type&pair_ID={id}&report_type=CAS&period_type=Annual"
+        html_content = requests.get(cf_url).text
         soup = BeautifulSoup(html_content, "html.parser")
         get_values(soup, data_dict, currency, fold)
         not_avail = [na for na in expected_value if na not in data_dict.keys()]

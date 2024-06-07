@@ -6,34 +6,11 @@ import os
 from supabase import create_client
 import pandas as pd
 import datetime
+from datetime import datetime
 import logging
+import argparse
 import numpy as np
 from bs4 import BeautifulSoup
-
-data_link = pd.read_csv("investing_link.csv")
-
-expected_value = [
-    # Income Statement
-    "Total Revenue", "Net Income", "Diluted Weighted Average Shares",
-    "Gross Profit", "Net Income Before Taxes", "Provision for Income Taxes",
-    "Interest Expense (Income) - Net Operating", "Operating Income",
-    "Cash & Due from Banks",
-
-    # Balance Sheet
-    "Total Assets", "Total Liabilities", "Total Current Liabilities", 
-    "Total Equity", "Current Port. of LT Debt/Capital Leases", 
-    "Total Long Term Debt", "Total Liabilities & Shareholders' Equity", 
-    "Minority Interest", "Cash and Short Term Investments", 
-    "Cash & Equivalents", "Total Current Assets",
-
-    # Cash FLow
-    "Cash From Operating Activities", "Free Cash Flow"
-]
-
-url_currency = 'https://raw.githubusercontent.com/supertypeai/sectors_get_conversion_rate/master/conversion_rate.json'
-response = requests.get(url_currency)
-data = response.json()
-rate = float(data['USD']['IDR'])
 
 def get_values(soup, data_dict, currency, fold):
     tbodies = soup.find("tbody")
@@ -99,7 +76,7 @@ def get_dates_annual(soup, symbol):
             pass
     return data_dict
 
-def main(data_link):
+def main(data_link, args):
     data_list = []
     for index, row in data_link.iterrows():
         if index == 4:
@@ -113,7 +90,7 @@ def main(data_link):
         is_url = f"https://www.investing.com{link}-income-statement"
         html_content = requests.get(is_url).text
         soup = BeautifulSoup(html_content, "html.parser")
-        data_dict = get_dates_quarter(soup, symbol)
+        data_dict = get_dates_quarter(soup, symbol) if args.quarter else get_dates_annual(soup, symbol)
         get_values(soup, data_dict, currency, fold)
         # Balance Sheet
         bs_url = f"https://www.investing.com{link}-balance-sheet"
@@ -160,6 +137,45 @@ def fe_and_rename(df):
     data = df.rename(columns=columns_rename).drop(['Minority Interest', 'Current Port. of LT Debt/Capital Leases', 'Total Long Term Debt', "Total Liabilities & Shareholders' Equity", "Total Current Assets"], axis = 1)
     return data
 
-data = main(data_link)
-data = fe_and_rename(data)
-data.to_csv("result.csv", index = False)
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="Update financial data. If no argument is specified, the annual data will be updated.")
+    parser.add_argument("-a", "--annual", action="store_true", default=False, help="Update annual financial data")
+    parser.add_argument("-q", "--quarter", action="store_true", default=False, help="Update quarter financial data")
+
+    args = parser.parse_args()
+    if args.annual and args.quarter:
+        print("Error: Please specify either -a or -q, not both.")
+        raise SystemExit(1)
+    
+    data_link = pd.read_csv("investing_link.csv")
+
+    expected_value = [
+        # Income Statement
+        "Total Revenue", "Net Income", "Diluted Weighted Average Shares",
+        "Gross Profit", "Net Income Before Taxes", "Provision for Income Taxes",
+        "Interest Expense (Income) - Net Operating", "Operating Income",
+        "Cash & Due from Banks",
+
+        # Balance Sheet
+        "Total Assets", "Total Liabilities", "Total Current Liabilities", 
+        "Total Equity", "Current Port. of LT Debt/Capital Leases", 
+        "Total Long Term Debt", "Total Liabilities & Shareholders' Equity", 
+        "Minority Interest", "Cash and Short Term Investments", 
+        "Cash & Equivalents", "Total Current Assets",
+
+        # Cash FLow
+        "Cash From Operating Activities", "Free Cash Flow"
+    ]
+    url_currency = 'https://raw.githubusercontent.com/supertypeai/sectors_get_conversion_rate/master/conversion_rate.json'
+
+    response = requests.get(url_currency)
+    data = response.json()
+    rate = float(data['USD']['IDR'])
+
+    url_supabase = os.environ.get("SUPABASE_URL")
+    key = os.environ.get("SUPABASE_KEY")
+    supabase = create_client(url_supabase, key)
+
+    data = main(data_link, args)
+    data = fe_and_rename(data)
+    data.to_csv("quarter.csv", index = False) if args.quarter else data.to_csv("annual.csv", index = False)
